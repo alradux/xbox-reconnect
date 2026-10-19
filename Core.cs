@@ -10,8 +10,9 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 [assembly: System.Reflection.AssemblyTitle("Xbox Reconnect")]
-[assembly: System.Reflection.AssemblyVersion("2.1.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("2.1.0.0")]
+[assembly: System.Reflection.AssemblyVersion("2.2.0.0")]
+[assembly: System.Reflection.AssemblyFileVersion("2.2.0.0")]
+[assembly: System.Runtime.Versioning.TargetFramework(".NETFramework,Version=v4.8",FrameworkDisplayName=".NET Framework 4.8")]
 
 internal sealed class Adapter {
     public string Name, Id;
@@ -158,6 +159,7 @@ internal static class Program {
             return ok && SettingsTests.Run()?0:1;
         }
         Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
+        if(args.Length==2 && args[0]=="--dpi-test") return DpiLayoutTests.Run(args[1])?0:1;
         if(args.Length==1 && args[0]=="--ui-test") {
             using(var form=new ReconnectForm(true)) { form.Show(); Application.DoEvents(); return form.TestDropdowns()?0:1; }
         }

@@ -1,7 +1,7 @@
 # Xbox Reconnect
 
-![EXE downloads](https://img.shields.io/github/downloads/alradux/xbox-reconnect/v2.1/Xbox-Reconnect-v2.1.exe?label=EXE%20downloads)
-
+![v2.2 EXE downloads](https://img.shields.io/github/downloads/alradux/xbox-reconnect/v2.2/Xbox-Reconnect-v2.2.exe?label=v2.2%20EXE%20downloads)
+![v2.1 EXE downloads](https://img.shields.io/github/downloads/alradux/xbox-reconnect/v2.1/Xbox-Reconnect-v2.1.exe?label=v2.1%20EXE%20downloads)
 
 A small, portable Windows app for an Xbox controller that connects once after a PC restart, then shuts off shortly after reconnecting through an Xbox Wireless Adapter.
 
@@ -23,9 +23,13 @@ On the author's tested Windows 11 PC, reconnecting worked after reboot with **Ga
 
 This is evidence of a service-related compatibility problem on that setup, not proof that every controller disconnect has the same cause. A game did not need to be running for the fault to occur.
 
+## Display scaling
+
+Version 2.2 fixes text clipping reported at 175% scaling in issue #1. Text areas now size to their contents, instructions wrap, and the window can be resized or maximized. Layout spacing follows the display DPI when the app opens; scrollbars keep content reachable on small work areas. If you previously applied a System (Enhanced) DPI compatibility override, turn it off when testing v2.2.
+
 ## Use
 
-1. Download `Xbox-Reconnect-v2.1.exe` from this repository's **Releases** page.
+1. Download `Xbox-Reconnect-v2.2.exe` from this repository's **Releases** page.
 2. Open it and accept Windows' administrator prompt. System service and device changes require administrator access.
 3. If the controller will not reconnect, click **Stop**, then turn the controller on again.
 4. Before closing, click **Start** to restore GameInput Redist to Automatic and running.
@@ -36,7 +40,7 @@ Start intentionally selects **Automatic**; it does not restore an arbitrary prev
 
 ## Requirements and scope
 
-Windows 11 x64, with the Windows .NET Framework runtime. No installer or companion files are needed to run the release executable. This binary is unsigned.
+Windows 11 x64, with .NET Framework 4.8 (included with Windows 11). No installer or companion files are needed to run the release executable. This binary is unsigned.
 
 Controller monitoring uses Microsoft's documented XInput APIs. XInput does not provide model or serial information here and can include virtual controllers. Adapter restart supports recognized Microsoft USB IDs `045E:02E6` and `045E:02FE`; it excludes Bluetooth, Wi-Fi, and USB hubs. All devices using the selected Xbox dongle disconnect briefly when it is restarted.
 
@@ -48,7 +52,7 @@ On Windows x64, open PowerShell in this folder and run:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-The script uses the Windows .NET Framework C# compiler. The executable is written to `dist/Xbox-Reconnect-v2.1.exe`. No NuGet downloads are required. The execution-policy option applies only to that process.
+The script uses the Windows .NET Framework C# compiler. The executable is written to `dist/Xbox-Reconnect-v2.2.exe`. No NuGet downloads are required. The execution-policy option applies only to that process.
 
 To also run the existing logic and UI checks without changing real services:
 
@@ -56,7 +60,7 @@ To also run the existing logic and UI checks without changing real services:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Test
 ```
 
-Logic checks include startup-mode handling, simulated partial-write rollback, state verification, and the exit guard. UI checks use mock service state. Actual service mutations require testing on the target PC; they are not performed by these tests.
+Logic checks include startup-mode handling, simulated partial-write rollback, state verification, and the exit guard. UI checks use mock service state. DPI checks emulate 100%, 125%, 150%, 175%, and 200% font/layout metrics and inspect label bounds, long status messages, and scrolling at 800 x 600; they do not change Windows display settings. This does not replace confirmation on the reporter's physical 175% display. Actual service mutations require testing on the target PC; they are not performed by these tests.
 
 ## Reporting a problem
 
@@ -70,7 +74,8 @@ For GameInput itself, report through Windows Feedback Hub and the [GameInput iss
 - `ReconnectForm.cs`: interface, monitoring, Start/Stop workflow, and close reminder.
 - `ServiceSettings.cs`: Windows Service Control Manager configuration and control calls.
 - `SettingsTests.cs`: mock logic checks.
+- `DpiLayoutTests.cs`: scale, text-fit, resize, and scrolling regression checks.
 - `XboxReconnect.manifest`: administrator elevation and Windows compatibility declarations.
 - `XboxReconnect.ico`: application icon.
 
-No license has been selected in this package. The repository owner can add one before publishing.
+No license has been selected for this repository.

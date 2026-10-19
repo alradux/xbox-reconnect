@@ -1,13 +1,15 @@
-## Xbox Reconnect v2.1
+## Xbox Reconnect v2.2 - high-DPI layout fix
 
-Portable Windows 11 x64 utility for a controller reconnect problem associated with GameInput Redist on the tested PC.
+Fixes text clipping reported in [issue #1](https://github.com/alradux/xbox-reconnect/issues/1) at 175% display scaling.
 
-- Simple Start / Stop service controls.
-- Stop disables and stops GameInput Redist to keep it from restarting itself.
-- Start restores Automatic startup and starts the service.
-- Normal app closing requires Start after the service has been stopped or disabled.
-- Live controller status, battery details when available, adapter restart, and saved reports.
+- Text areas size themselves to the displayed text instead of using fixed pixel heights.
+- Instructions and status messages wrap to the available space.
+- Spacing and button sizes follow display DPI when the app opens.
+- The window can be resized or maximized, fits within the working area on launch, and scrolls on smaller screens.
+- Start/Stop service behavior and the reminder to restore GameInput before normal exit are unchanged.
 
-Download **Xbox-Reconnect-v2.1.exe** under Assets. The executable is unsigned and asks for administrator access. Source and build instructions are included in the repository.
+**Download Xbox-Reconnect-v2.2.exe under Assets.** No installer or companion files are needed. If you previously enabled a System (Enhanced) DPI compatibility override for the app, turn it off when checking this version.
 
-This is a workaround, not an official Microsoft fix. Some games require GameInput. See the README for behavior, recovery instructions, and limitations.
+Validation: mock UI and service-logic checks passed. Automated layout checks passed at emulated 100%, 125%, 150%, 175%, and 200% metrics, including long status text and an 800 x 600 viewport. Real display settings and Windows services were not changed by these tests; confirmation on the reporter's physical 175% setup is still welcome.
+
+The executable is unsigned and requires administrator access for service/device changes. This remains a workaround for the GameInput reconnect problem, not an official Microsoft fix. SHA256SUMS.txt identifies the release binary.

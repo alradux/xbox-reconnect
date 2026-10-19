@@ -21,48 +21,50 @@ internal sealed class ReconnectForm : Form {
     bool[] known=new bool[4],connected=new bool[4]; DateTime[] connectedSince=new DateTime[4]; DateTime? lastSeen;
     string latestControllers="Not checked yet",lastServiceState;
 
-    internal ReconnectForm(bool isPreview) {
-        preview=isPreview; Text="Xbox Reconnect 2.1"; ClientSize=new Size(940,860);
-        StartPosition=FormStartPosition.CenterScreen; MaximizeBox=false; FormBorderStyle=FormBorderStyle.FixedSingle;
+    float layoutScale=1f,fontMultiplier=1f;
+    TableLayoutPanel content;
+    readonly List<Label> wrappingLabels=new List<Label>();
+    internal ReconnectForm(bool isPreview,float mockDpiScale=0f) {
+        SuspendLayout(); preview=isPreview; Text="Xbox Reconnect 2.2";
+        AutoScaleMode=AutoScaleMode.None;
+        StartPosition=FormStartPosition.CenterScreen; MaximizeBox=true; FormBorderStyle=FormBorderStyle.Sizable;
         Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         BackColor=Color.FromArgb(16,22,19); ForeColor=Color.FromArgb(239,246,241);
-        Font=new Font("Segoe UI",10); AutoScaleMode=AutoScaleMode.Dpi;
-        // Keep every control reachable on small displays through scrolling.
+        float nativeScale; using(var graphics=CreateGraphics()) nativeScale=graphics.DpiX/96f;
+        layoutScale=mockDpiScale>0?mockDpiScale:nativeScale;
+        fontMultiplier=mockDpiScale>0?mockDpiScale/nativeScale:1f;
+        Font=new Font("Segoe UI",10*fontMultiplier);
+        ClientSize=new Size(Px(940),Px(860));
         var viewport=new Panel { Dock=DockStyle.Fill,AutoScroll=true }; Controls.Add(viewport);
-        var root=new TableLayoutPanel { Width=940,Height=860,ColumnCount=1,RowCount=6,Padding=new Padding(24),Dock=DockStyle.Top };
-        root.MinimumSize=new Size(900,860); viewport.Controls.Add(root);
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute,86)); root.RowStyles.Add(new RowStyle(SizeType.Absolute,244));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute,164)); root.RowStyles.Add(new RowStyle(SizeType.Absolute,116));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent,100)); root.RowStyles.Add(new RowStyle(SizeType.Absolute,28));
-        var header=new Panel { Dock=DockStyle.Fill,Margin=Padding.Empty };
-        header.Controls.Add(Label("CONTROLLER CONNECTION HELPER",0,0,850,20,9,Green,true));
-        header.Controls.Add(Label("Xbox Reconnect",0,25,850,43,25,ForeColor,true));
-        root.Controls.Add(header,0,0);
+        content=Stack(); content.Dock=DockStyle.None; content.Anchor=AnchorStyles.Top|AnchorStyles.Left; content.Padding=new Padding(Px(24));
+        content.MinimumSize=new Size(Px(700),0); viewport.Controls.Add(content);
+        var header=Stack(); header.Margin=new Padding(0,0,0,Px(16));
+        header.Controls.Add(AutoLabel("CONTROLLER CONNECTION HELPER",9,Green,true));
+        header.Controls.Add(AutoLabel("Xbox Reconnect",25,ForeColor,true)); content.Controls.Add(header);
 
-        var card=new Card { Dock=DockStyle.Fill,Margin=new Padding(0,0,0,12) };
-        card.Controls.Add(Label("GAMEINPUT REDIST SERVICE",20,14,560,24,11,Green,true));
-        serviceStatus=Label("Checking...",660,14,205,26,11,Muted,true); serviceStatus.TextAlign=ContentAlignment.MiddleRight; card.Controls.Add(serviceStatus);
-        serviceDetails=Label("Reading installed version and startup setting...",20,44,840,24,9,Muted,false); card.Controls.Add(serviceDetails);
-        start=Button("Start",20,79,180,true); stop=Button("Stop",212,79,180,false);
-        card.Controls.Add(start); card.Controls.Add(stop);
-        card.Controls.Add(Label("If the controller will not reconnect, click Stop.",20,127,845,24,11,ForeColor,true));
-        card.Controls.Add(Label("GameInput Redist can trigger this fault. Stop disables and stops the service so it cannot restart itself.\nWhen finished, click Start to set it back to Automatic and run it again for games that need it.",20,157,845,42,9,Muted,false));
-        exitHint=Label("After using Stop, you must click Start before closing this app.",20,204,845,23,9,Green,true); card.Controls.Add(exitHint);
-        root.Controls.Add(card,0,1);
-        start.Click+=async delegate { await ServiceAction("Start"); };
-        stop.Click+=async delegate { await ServiceAction("Stop"); };
+        var serviceBody=Stack(); var serviceCard=AutoCard(serviceBody); content.Controls.Add(serviceCard);
+        var serviceHeading=new TableLayoutPanel { AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,Dock=DockStyle.Top,ColumnCount=2,Margin=Padding.Empty };
+        serviceHeading.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,70)); serviceHeading.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,30));
+        serviceHeading.Controls.Add(AutoLabel("GAMEINPUT REDIST SERVICE",11,Green,true),0,0);
+        serviceStatus=AutoLabel("Checking...",11,Muted,true); serviceStatus.Anchor=AnchorStyles.Right; serviceHeading.Controls.Add(serviceStatus,1,0); serviceBody.Controls.Add(serviceHeading);
+        serviceDetails=AutoLabel("Reading installed version and startup setting...",9,Muted,false); serviceBody.Controls.Add(serviceDetails);
+        var serviceButtons=ButtonRow(); start=ActionButton("Start",180,true); stop=ActionButton("Stop",180,false);
+        serviceButtons.Controls.Add(start); serviceButtons.Controls.Add(stop); serviceBody.Controls.Add(serviceButtons);
+        serviceBody.Controls.Add(AutoLabel("If the controller will not reconnect, click Stop.",11,ForeColor,true));
+        serviceBody.Controls.Add(AutoLabel("GameInput Redist can trigger this fault. Stop disables and stops the service so it cannot restart itself.\nWhen finished, click Start to set it back to Automatic and run it again for games that need it.",9,Muted,false));
+        exitHint=AutoLabel("After using Stop, you must click Start before closing this app.",9,Green,true); serviceBody.Controls.Add(exitHint);
+        start.Click+=async delegate { await ServiceAction("Start"); }; stop.Click+=async delegate { await ServiceAction("Stop"); };
 
-        var controllerCard=new Card { Dock=DockStyle.Fill,Margin=new Padding(0,0,0,12) };
-        controllerTitle=Label("CONTROLLER STATUS   /   CHECKING...",20,13,850,23,10,Green,true); controllerCard.Controls.Add(controllerTitle);
-        for(int i=0;i<4;i++) { rows[i]=Label("Slot "+(i+1)+"  /  Checking...",20,42+i*21,850,22,9,Muted,false); controllerCard.Controls.Add(rows[i]); }
-        controllerCard.Controls.Add(Label("Windows XInput status; model / serial unavailable. Virtual controllers can also appear here.",20,128,850,20,9,Muted,false));
-        root.Controls.Add(controllerCard,0,2);
-        var adapterCard=new Card { Dock=DockStyle.Fill,Margin=new Padding(0,0,0,12) };
-        adapterCard.Controls.Add(Label("WIRELESS ADAPTER",20,11,580,21,9,Muted,true));
-        adapterSelect=Button("Checking adapter...",20,38,610,false); adapterSelect.TextAlign=ContentAlignment.MiddleLeft;
-        restartAdapter=Button("Restart adapter",642,38,223,false); adapterCard.Controls.Add(adapterSelect); adapterCard.Controls.Add(restartAdapter);
-        adapterStatus=Label("Only the selected Xbox adapter is affected.",20,78,850,20,9,Muted,false); adapterCard.Controls.Add(adapterStatus);
-        root.Controls.Add(adapterCard,0,3);
+        var controllerBody=Stack(); content.Controls.Add(AutoCard(controllerBody));
+        controllerTitle=AutoLabel("CONTROLLER STATUS   /   CHECKING...",10,Green,true); controllerBody.Controls.Add(controllerTitle);
+        for(int i=0;i<4;i++) { rows[i]=AutoLabel("Slot "+(i+1)+"  /  Checking...",9,Muted,false); controllerBody.Controls.Add(rows[i]); }
+        controllerBody.Controls.Add(AutoLabel("Windows XInput status; model / serial unavailable. Virtual controllers can also appear here.",9,Muted,false));
+
+        var adapterBody=Stack(); content.Controls.Add(AutoCard(adapterBody));
+        adapterBody.Controls.Add(AutoLabel("WIRELESS ADAPTER",9,Muted,true));
+        var adapterButtons=ButtonRow(); adapterSelect=ActionButton("Checking adapter...",470,false); adapterSelect.TextAlign=ContentAlignment.MiddleLeft;
+        restartAdapter=ActionButton("Restart adapter",190,false); adapterButtons.Controls.Add(adapterSelect); adapterButtons.Controls.Add(restartAdapter); adapterBody.Controls.Add(adapterButtons);
+        adapterStatus=AutoLabel("Only the selected Xbox adapter is affected.",9,Muted,false); adapterBody.Controls.Add(adapterStatus);
         adapterSelect.Click+=delegate {
             if(adapters.Count==0) return;
             while(adapterMenu.Items.Count>0) { var old=adapterMenu.Items[0]; adapterMenu.Items.RemoveAt(0); old.Dispose(); }
@@ -72,45 +74,106 @@ internal sealed class ReconnectForm : Form {
             }
             adapterMenu.Show(adapterSelect,new Point(0,adapterSelect.Height));
         };
-        restartAdapter.Click+=async delegate {
-            Adapter target=selectedAdapter; if(target==null) return;
-            await Run("RESTARTING ADAPTER",delegate { RestartAdapter(target); });
-        };
-        var activity=new Panel { Dock=DockStyle.Fill,Margin=Padding.Empty };
-        activityTitle=Label("ACTIVITY   /   READY",0,0,650,24,9,Muted,true); activity.Controls.Add(activityTitle);
-        var save=Button("Save report",747,0,145,false); save.Height=28; activity.Controls.Add(save); save.Click+=delegate { SaveReport(); };
-        log=new TextBox { Left=0,Top=36,Width=892,Height=100,Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,BorderStyle=BorderStyle.None,BackColor=BackColor,ForeColor=Muted,Font=new Font("Consolas",9) };
-        activity.Controls.Add(log); activity.Resize+=delegate { log.Width=activity.ClientSize.Width; log.Height=Math.Max(40,activity.ClientSize.Height-36); };
-        root.Controls.Add(activity,0,4);
-        root.Controls.Add(Label("Service changes happen only when you click Start or Stop. Live status updates automatically.",0,7,890,21,9,Muted,false),0,5);
+        restartAdapter.Click+=async delegate { Adapter target=selectedAdapter; if(target!=null) await Run("RESTARTING ADAPTER",delegate { RestartAdapter(target); }); };
+
+        var activity=Stack(); content.Controls.Add(activity);
+        var activityHeading=ButtonRow(); activityTitle=AutoLabel("ACTIVITY   /   READY",9,Muted,true); activityHeading.Controls.Add(activityTitle);
+        var save=ActionButton("Save report",145,false); activityHeading.Controls.Add(save); save.Click+=delegate { SaveReport(); }; activity.Controls.Add(activityHeading);
+        log=new TextBox { Dock=DockStyle.Top,Height=Px(150),Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,BorderStyle=BorderStyle.None,BackColor=BackColor,ForeColor=Muted,Font=new Font("Consolas",9*fontMultiplier),Margin=new Padding(0,Px(8),0,Px(12)) };
+        activity.Controls.Add(log);
+        content.Controls.Add(AutoLabel("Service changes happen only when you click Start or Stop. Live status updates automatically.",9,Muted,false));
+        viewport.SizeChanged+=delegate { UpdateWrapping(); };
+        content.SizeChanged+=delegate { UpdateWrapping(); };
         FormClosing+=delegate(object sender,FormClosingEventArgs e) {
             if(!CanExit(busy,needsRestore)) {
                 e.Cancel=true;
                 if(busy) { Write("Please wait for the current operation to finish."); return; }
-                MessageBox.Show(this,"Click Start before closing to re-enable GameInput Redist and make it available to games again.","Restore GameInput before closing",MessageBoxButtons.OK,MessageBoxIcon.Information);
-                start.Focus();
+                MessageBox.Show(this,"Click Start before closing to re-enable GameInput Redist and make it available to games again.","Restore GameInput before closing",MessageBoxButtons.OK,MessageBoxIcon.Information); start.Focus();
             }
         };
         if(preview) {
-            serviceName="GameInputRedistService"; service=new RedistSnapshot { Name=serviceName,Version="4.0.300.0",Startup=4,Status=ServiceControllerStatus.Stopped };
-            DisplayService();
+            serviceName="GameInputRedistService"; service=new RedistSnapshot { Name=serviceName,Version="4.0.300.0",Startup=4,Status=ServiceControllerStatus.Stopped }; DisplayService();
             selectedAdapter=new Adapter { Name="Xbox Wireless Adapter for Windows #2",Id=@"USB\VID_045E&PID_02FE\PREVIEW" }; adapters.Add(selectedAdapter); adapterSelect.Text=selectedAdapter.ToString()+"   \u25be";
-            controllerTitle.Text="CONTROLLER STATUS   /   DISCONNECTED";
-            for(int i=0;i<4;i++) rows[i].Text="Slot "+(i+1)+"  /  Disconnected";
-            Write("GameInput Redist Service: Stopped / Disabled."); Write("If the reconnect issue happens, click Stop. Click Start before closing.");
-            SetEnabled();
+            controllerTitle.Text="CONTROLLER STATUS   /   DISCONNECTED"; for(int i=0;i<4;i++) rows[i].Text="Slot "+(i+1)+"  /  Disconnected";
+            Write("If the reconnect issue happens, click Stop. Click Start before closing."); SetEnabled();
         } else {
             SetEnabled(); timer=new Timer { Interval=500 };
-            timer.Tick+=async delegate {
-                await PollControllers(); pollCount++;
-                if(pollCount%4==0 && !busy) await RefreshService();
-            };
-            Shown+=async delegate {
-                timer.Start(); await RefreshService(); await RefreshAdapters();
-                int maxHeight=Screen.FromControl(this).WorkingArea.Height-40; if(Height>maxHeight) Height=maxHeight;
-            };
+            timer.Tick+=async delegate { await PollControllers(); pollCount++; if(pollCount%4==0 && !busy) await RefreshService(); };
+            Shown+=async delegate { FitToWorkingArea(); UpdateWrapping(); timer.Start(); await RefreshService(); await RefreshAdapters(); };
             FormClosed+=delegate { timer.Stop(); timer.Dispose(); };
         }
+        ResumeLayout(true); UpdateWrapping();
+    }
+    int Px(int value) { return (int)Math.Ceiling(value*layoutScale); }
+    TableLayoutPanel Stack() {
+        var panel=new TableLayoutPanel { AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,ColumnCount=1,Dock=DockStyle.Top,Margin=Padding.Empty,Padding=Padding.Empty };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100)); return panel;
+    }
+    Card AutoCard(TableLayoutPanel body) {
+        var card=new Card { AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,Dock=DockStyle.Top,Padding=new Padding(Px(20)),Margin=new Padding(0,0,0,Px(12)) };
+        card.Controls.Add(body); return card;
+    }
+    FlowLayoutPanel ButtonRow() {
+        return new FlowLayoutPanel { AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,Dock=DockStyle.Top,WrapContents=true,Margin=new Padding(0,Px(5),0,Px(8)),Padding=Padding.Empty };
+    }
+    Label AutoLabel(string text,float size,Color color,bool bold) {
+        var label=new Label { AutoSize=true,Text=text,ForeColor=color,Font=new Font("Segoe UI",size*fontMultiplier,bold?FontStyle.Bold:FontStyle.Regular),Margin=new Padding(0,0,0,Px(7)),UseMnemonic=false };
+        wrappingLabels.Add(label); return label;
+    }
+    Button ActionButton(string text,int minWidth,bool primary) {
+        var button=Button(text,0,0,Px(minWidth),primary);
+        button.AutoSize=true; button.AutoSizeMode=AutoSizeMode.GrowAndShrink;
+        button.MinimumSize=new Size(Px(minWidth),Px(36)); button.Padding=new Padding(Px(12),Px(5),Px(12),Px(5));
+        button.Margin=new Padding(0,0,Px(12),0); return button;
+    }
+    bool updatingWrap;
+    void UpdateWrapping() {
+        if(updatingWrap || content==null) return; updatingWrap=true;
+        try {
+            // A docked child can overhang its AutoScroll parent without creating
+            // a horizontal scrollbar. Give the content an explicit scrollable width.
+            int contentWidth=Math.Max(Px(700),content.Parent.ClientSize.Width);
+            content.MaximumSize=new Size(contentWidth,0); content.MinimumSize=new Size(contentWidth,0); content.Width=contentWidth;
+            foreach(Label label in wrappingLabels) {
+                if(label.Parent==null) continue;
+                int width=label.Parent.ClientSize.Width-label.Parent.Padding.Horizontal-label.Margin.Horizontal;
+                if(label.Parent is TableLayoutPanel && ((TableLayoutPanel)label.Parent).ColumnCount==2) width=(int)(width*(label==serviceStatus ? 0.30 : 0.70));
+                var limit=new Size(Math.Max(Px(120),width),0);
+                if(label.MaximumSize!=limit) label.MaximumSize=limit;
+            }
+        } finally { updatingWrap=false; }
+    }
+
+    void FitToWorkingArea() {
+        Rectangle area=Screen.FromControl(this).WorkingArea;
+        Size fitted=new Size(Math.Min(Width,Math.Max(320,area.Width-32)),Math.Min(Height,Math.Max(240,area.Height-32)));
+        Size=fitted;
+        Location=new Point(area.Left+(area.Width-Width)/2,area.Top+(area.Height-Height)/2);
+    }
+    static void CollectControls(Control parent,List<Control> result) {
+        foreach(Control child in parent.Controls) { result.Add(child); CollectControls(child,result); }
+    }
+    internal string CheckTextLayout() {
+        var controls=new List<Control>(); CollectControls(this,controls);
+        foreach(Control control in controls) {
+            var label=control as Label; if(label==null || label.Text.Length==0) continue;
+            Size available=new Size(Math.Max(1,label.ClientSize.Width-label.Padding.Horizontal),int.MaxValue);
+            Size measured=TextRenderer.MeasureText(label.Text,label.Font,available,TextFormatFlags.WordBreak);
+            if(measured.Height>label.ClientSize.Height-label.Padding.Vertical+1)
+                return "Text clipped: "+label.Text+"; needs "+measured+"; has "+label.ClientSize;
+            if(label.Left<0 || label.Top<0 || label.Right>label.Parent.ClientSize.Width+1 || label.Bottom>label.Parent.ClientSize.Height+1)
+                return "Label outside parent: "+label.Text+"; label "+label.Bounds+"; parent "+label.Parent.ClientSize;
+        }
+        if(log.Bottom>log.Parent.ClientSize.Height+1) return "Activity log extends below its panel.";
+        return null;
+    }
+    internal void SetDpiTestContent() {
+        if(!preview) throw new InvalidOperationException("Layout samples require mock service state.");
+        service=new RedistSnapshot { Name=serviceName,Version="4.0.300.0",Startup=2,Delayed=true,Status=ServiceControllerStatus.Running,CanStop=true };
+        DisplayService(); controllerTitle.Text="CONTROLLER STATUS   /   DISCONNECTED   /   LAST SEEN 23:59:59";
+        for(int i=0;i<4;i++) rows[i].Text="Slot "+(i+1)+"  /  CONNECTED  /  Wireless  /  Battery: Full  /  Buttons: 0xFFFF";
+        adapterStatus.Text="1 supported adapter(s). Restarting briefly disconnects controllers and headsets on that adapter.";
+        UpdateWrapping(); PerformLayout(); Application.DoEvents();
     }
     protected override void Dispose(bool disposing) {
         // Dropdown close is part of click dispatch. Keep menus alive until the form is disposed.
@@ -136,7 +199,7 @@ internal sealed class ReconnectForm : Form {
     internal static bool CanExit(bool operationRunning,bool restoreRequired) { return !operationRunning && !restoreRequired; }
     Label Label(string text,int x,int y,int w,int h,float size,Color color,bool bold) { return new Label { Text=text,Left=x,Top=y,Width=w,Height=h,ForeColor=color,Font=new Font("Segoe UI",size,bold?FontStyle.Bold:FontStyle.Regular) }; }
     Button Button(string text,int x,int y,int w,bool primary) {
-        var result=new Button { Text=text,Left=x,Top=y,Width=w,Height=34,FlatStyle=FlatStyle.Flat,BackColor=primary?Green:Color.FromArgb(39,51,43),ForeColor=primary?Color.FromArgb(18,35,18):ForeColor,Font=new Font("Segoe UI",10,FontStyle.Bold),Cursor=Cursors.Hand,UseVisualStyleBackColor=false };
+        var result=new Button { Text=text,Left=x,Top=y,Width=w,Height=Px(34),FlatStyle=FlatStyle.Flat,BackColor=primary?Green:Color.FromArgb(39,51,43),ForeColor=primary?Color.FromArgb(18,35,18):ForeColor,Font=new Font("Segoe UI",10*fontMultiplier,FontStyle.Bold),Cursor=Cursors.Hand,UseVisualStyleBackColor=false };
         result.FlatAppearance.BorderSize=0; return result;
     }
     void Write(string text) { if(IsDisposed) return; if(InvokeRequired) { Invoke(new Action<string>(Write),text); return; } log.AppendText(DateTime.Now.ToString("HH:mm:ss")+"  "+text+Environment.NewLine+Environment.NewLine); }
@@ -251,7 +314,7 @@ internal sealed class ReconnectForm : Form {
                 string target=serviceName;
                 string details=await Task.Run(delegate { if(target==null) return "No service detected"; var current=ServiceSettings.Read(target); return current.Name+"\r\nStatus: "+current.Status+"\r\nStartup: "+current.Mode+"\r\nVersion: "+current.Version+"\r\nPath: "+current.Path; });
                 if(IsDisposed) return;
-                System.IO.File.WriteAllText(dialog.FileName,"Xbox Reconnect 2.1\r\n"+DateTime.Now.ToString("O")+"\r\nWindows: "+Environment.OSVersion+"\r\nRestore required before exit: "+needsRestore+"\r\nAdapter: "+(selectedAdapter==null?"None":selectedAdapter.Name+"\r\n"+selectedAdapter.Id)+"\r\n\r\nGameInput Redist Service:\r\n"+details+"\r\n\r\n"+latestControllers+"\r\nActivity:\r\n"+log.Text); Write("Report saved.");
+                System.IO.File.WriteAllText(dialog.FileName,"Xbox Reconnect 2.2\r\n"+DateTime.Now.ToString("O")+"\r\nWindows: "+Environment.OSVersion+"\r\nRestore required before exit: "+needsRestore+"\r\nAdapter: "+(selectedAdapter==null?"None":selectedAdapter.Name+"\r\n"+selectedAdapter.Id)+"\r\n\r\nGameInput Redist Service:\r\n"+details+"\r\n\r\n"+latestControllers+"\r\nActivity:\r\n"+log.Text); Write("Report saved.");
             } catch(Exception ex) { if(!IsDisposed) Write("Could not save report: "+ex.Message); }
         }
     }

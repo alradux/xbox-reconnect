@@ -6,9 +6,9 @@ if (-not (Test-Path -LiteralPath $compiler)) { throw 'The Windows x64 .NET Frame
 $distPath = Join-Path $projectRoot 'dist'
 $testPath = Join-Path $projectRoot 'build'
 [void][IO.Directory]::CreateDirectory($distPath)
-$sources = @('Core.cs','ServiceSettings.cs','ReconnectForm.cs','SettingsTests.cs') | ForEach-Object { Join-Path $projectRoot $_ }
+$sources = @('Core.cs','ServiceSettings.cs','ReconnectForm.cs','SettingsTests.cs','DpiLayoutTests.cs') | ForEach-Object { Join-Path $projectRoot $_ }
 $common = @('/nologo','/target:winexe','/platform:x64','/optimize+', '/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.ServiceProcess.dll',('/win32icon:' + (Join-Path $projectRoot 'XboxReconnect.ico')))
-$appPath = Join-Path $distPath 'Xbox-Reconnect-v2.1.exe'
+$appPath = Join-Path $distPath 'Xbox-Reconnect-v2.2.exe'
 & $compiler @common ('/win32manifest:' + (Join-Path $projectRoot 'XboxReconnect.manifest')) ('/out:' + $appPath) @sources
 if ($LASTEXITCODE -ne 0) { throw 'App compilation failed.' }
 if ($Test) {
@@ -20,6 +20,9 @@ if ($Test) {
         $testProcess = Start-Process -FilePath $testExe -ArgumentList $testArgument -WindowStyle Hidden -Wait -PassThru
         if ($testProcess.ExitCode -ne 0) { throw ('Checks failed: ' + $testArgument + ' (exit ' + $testProcess.ExitCode + ')') }
     }
-    Write-Host 'Checks passed. No real services were changed by the tests.'
+    $dpiOutput = Join-Path $testPath 'dpi-layout'
+    $dpiProcess = Start-Process -FilePath $testExe -ArgumentList @('--dpi-test', ('"' + $dpiOutput + '"')) -WindowStyle Hidden -Wait -PassThru
+    if ($dpiProcess.ExitCode -ne 0) { throw 'DPI layout checks failed. See build/dpi-layout/layout-checks.txt.' }
+    Write-Host 'Logic, UI and DPI layout checks passed. No real services were changed by the tests.'
 }
 Write-Host ('Built: ' + $appPath)
