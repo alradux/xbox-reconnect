@@ -1,6 +1,6 @@
 # Xbox Reconnect
 
-![v2.2 EXE downloads](https://img.shields.io/github/downloads/alradux/xbox-reconnect/v2.2/Xbox-Reconnect-v2.2.exe?label=v2.2%20EXE%20downloads)
+![v2.2 EXE downloads](https://img.shields.io/github/downloads/alradux/xbox-reconnect/v2.2/Xbox-Reconnect-v2.2.exe?label=v2.2%20EXE%20downloads&displayAssetName=false&cacheSeconds=300)
 ![v2.1 EXE downloads](https://img.shields.io/github/downloads/alradux/xbox-reconnect/v2.1/Xbox-Reconnect-v2.1.exe?label=v2.1%20EXE%20downloads)
 
 A small, portable Windows app for an Xbox controller that connects once after a PC restart, then shuts off shortly after reconnecting through an Xbox Wireless Adapter.
